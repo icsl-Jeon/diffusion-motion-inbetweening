@@ -12,34 +12,12 @@ from train.training_loop import TrainLoop
 from data_loaders.get_data import DatasetConfig, get_dataset_loader
 from utils.model_util import create_model_and_diffusion
 from configs import card
-import wandb
-
-
-def init_wandb(config, project_name=None, entity=None, tags=[], notes=None, **kwargs):
-    if entity is None:
-        assert (
-            "WANDB_ENTITY" in os.environ
-        ), "Please either pass in \"entity\" to logging.init or set environment variable 'WANDB_ENTITY' to your wandb entity name."
-    if project_name is None:
-        assert (
-            "WANDB_PROJECT" in os.environ
-        ), "Please either pass in \"project_name\" to logging.init or set environment variable 'WANDB_PROJECT' to your wandb project name."
-    tags.append(os.path.basename(sys.argv[0]))
-    if "_MY_JOB_ID" in os.environ:
-        x = f"(jobid:{os.environ['_MY_JOB_ID']})"
-        notes = x if notes is None else notes + " " + x
-    if len(config.resume_checkpoint) > 0:
-        # FIXME: this is specific to the current project's setting
-        run_id = config.resume_checkpoint.split("/")[-2]
-        wandb.init(project=project_name, entity=entity, config=config, tags=tags, notes=notes, resume="allow", id=run_id, **kwargs)
-    else:
-        wandb.init(project=project_name, entity=entity, config=config, tags=tags, notes=notes, **kwargs)
-
+import datetime
 
 def main():
     args = train_args(base_cls=card.motion_abs_unet_adagn_xl) # Choose the default full motion model from GMD
-    init_wandb(config=args)
-    args.save_dir = os.path.join("save", wandb.run.id)
+    args.save_dir = os.path.join("save", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+
     pprint(args.__dict__)
     fixseed(args.seed)
 
@@ -78,7 +56,6 @@ def main():
           (sum(p.numel() for p in model.parameters_wo_clip()) / 1000000.0))
     print("Training...")
     TrainLoop(args, model, diffusion, data).run_loop()
-    wandb.finish()
 
 
 if __name__ == "__main__":
