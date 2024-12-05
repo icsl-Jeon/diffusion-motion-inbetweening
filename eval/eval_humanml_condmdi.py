@@ -475,7 +475,6 @@ if __name__ == '__main__':
     # skip_first_stage = True  # bool(args.skip_first) # True
     print('> Skip first stage = {}'.format(skip_first_stage))
 
-    args.eval_mode = 'wo_mm'
     print(f'Eval mode [{args.eval_mode}]')
 
     if args.guidance_param != 1.:
@@ -485,13 +484,13 @@ if __name__ == '__main__':
     print(f'Will save to log file [{log_file}]')
 
     if args.eval_mode == 'debug':
-        num_samples_limit = 1000  # None means no limit (eval over all dataset)
+        num_samples_limit = 100  # None means no limit (eval over all dataset)
         run_mm = False
         mm_num_samples = 0
         mm_num_repeats = 0
         mm_num_times = 0
         diversity_times = 300
-        replication_times = 5  # about 3 Hrs
+        replication_times = 1  # about 3 Hrs
     elif args.eval_mode == 'wo_mm':
         num_samples_limit = 1000
         # num_samples_limit = 32
