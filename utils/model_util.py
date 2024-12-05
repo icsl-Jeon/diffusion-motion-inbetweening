@@ -39,7 +39,7 @@ def create_model_and_diffusion(args: FullModelOptions, data: DataLoader):
 
 def get_model_args(args: FullModelOptions, data: DataLoader):
     # default args
-    clip_version = 'ViT-B/32'
+    clip_version = "/group-volume/outfill/checkpoints/ViT-B-32.pt"
     action_emb = 'tensor'
     if args.unconstrained:
         cond_mode = 'no_cond'
