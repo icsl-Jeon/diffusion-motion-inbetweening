@@ -22,10 +22,14 @@ from torch.cuda import amp
 from utils.parser_util import TrainingOptions
 from utils.model_util import load_model_wo_clip
 from torch import nn
+from data_loaders.humanml.motion_loaders.model_motion_loaders import get_mdm_loader, get_mdm_loader_ours  # get_motion_loader
+from utils.parser_util import our_eval_args # , evaluation_parser
 
 import wandb
 from utils.editing_util import get_keyframes_mask
-
+from torch.utils.tensorboard import SummaryWriter
+from eval.eval_humanml_condmdi import load_dataset
+from eval import eval_humanml_condmdi
 # For ImageNet experiments, this was a good default value.
 # We found that the lg_loss_scale quickly climbed to
 # 20-21 within the first ~1K steps of training.
@@ -105,39 +109,36 @@ class TrainLoop:
             self.schedule_sampler_type, diffusion)
         self.eval_wrapper, self.eval_data, self.eval_gt_data = None, None, None
         if args.dataset in ['kit', 'humanml'] and args.eval_during_training:
-            raise NotImplementedError()
             mm_num_samples = 0  # mm is super slow hence we won't run it during training
             mm_num_repeats = 0  # mm is super slow hence we won't run it during training
-            gen_loader = get_dataset_loader(name=args.dataset,
-                                            batch_size=args.eval_batch_size,
-                                            num_frames=None,
-                                            split=args.eval_split,
-                                            hml_mode='eval')
-
-            self.eval_gt_data = get_dataset_loader(
-                name=args.dataset,
-                batch_size=args.eval_batch_size,
-                num_frames=None,
-                split=args.eval_split,
-                hml_mode='gt')
+            split = "val"
+            gen_loader = load_dataset(args, args.num_frames, split, hml_mode='eval')
+            self.eval_gt_data = load_dataset(args, args.num_frames, split, hml_mode='gt')
             self.eval_wrapper = EvaluatorMDMWrapper(args.dataset,
                                                     dist_util.dev())
+            
+            model_dict = {"motion": self.model, "traj": None}
+            diffusion_dict = {"motion": self.diffusion, "traj": None}
+            eval_args = our_eval_args(model_path=os.path.join(self.save_dir, ".."))
+            
+            eval_args.batch_size = 32 # This must be 32! Don't change it! otherwise it will cause a bug in R precision calc!
+            eval_args.num_frames = 196 # This must be 196!
+            eval_args.gen_two_stages = False
             self.eval_data = {
-                'test':
-                lambda: eval_humanml.get_mdm_loader(
-                    model,
-                    diffusion,
-                    args.eval_batch_size,
-                    gen_loader,
-                    mm_num_samples,
-                    mm_num_repeats,
-                    gen_loader.dataset.opt.max_motion_length,
-                    args.eval_num_samples,
-                    scale=1.,
-                )
+                'vald':
+                lambda seed: get_mdm_loader_ours(
+                    model_dict=model_dict, diffusion_dict=diffusion_dict, batch_size=args.batch_size, ground_truth_loader=gen_loader,
+                    mm_num_samples=mm_num_samples, mm_num_repeats=mm_num_repeats, max_motion_length=self.eval_gt_data.dataset.opt.max_motion_length,
+                    num_samples_limit=32, text_scale=args.guidance_param, keyframe_scale=1.0, seed=seed,
+                    save_dir=args.save_dir, impute_until=100, skip_first_stage=True, use_ddim=args.use_ddim, args=eval_args),
             }
+
+            self.eval_wrapper = EvaluatorMDMWrapper(args.dataset,
+                                                    dist_util.dev())
+
         self.use_ddp = False
         self.ddp_model = self.model
+        self.writer = SummaryWriter(log_dir=args.save_dir)
 
 
     def _load_and_sync_parameters(self):
@@ -225,8 +226,8 @@ class TrainLoop:
                 self.run_step(motion, cond)
 
                 if self.step % self.log_interval == 0:
-                    logger.dumpkvs()
                     for k, v in logger.get_current().name2val.items():
+                        self.writer.add_scalar(k, v, self.step)
                         if k == 'loss':
                             print('step[{}]: loss[{:0.5f}]'.format(
                                 self.step + self.resume_step, v))
@@ -260,9 +261,9 @@ class TrainLoop:
             log_file = os.path.join(
                 self.save_dir,
                 f'eval_humanml_{(self.step + self.resume_step):09d}.log')
-            diversity_times = 300
+            diversity_times = 10
             mm_num_times = 0  # mm is super slow hence we won't run it during training
-            eval_dict = eval_humanml.evaluation(
+            eval_dict = eval_humanml_condmdi.evaluation(
                 self.eval_wrapper,
                 self.eval_gt_data,
                 self.eval_data,
@@ -291,7 +292,12 @@ class TrainLoop:
             print(
                 f'Evaluation results on {self.dataset}: {sorted(eval_dict["feats"].items())}'
             )
-        wandb.log(eval_dict)
+
+        for k, v in eval_dict.items():
+            if type(v) == np.float64 or type(v) == np.float32:
+                print(k)
+                self.writer.add_scalar(k, v, self.step)
+
         end_eval = time.time()
         print(f'Evaluation time: {round(end_eval-start_eval)/60}min')
 
