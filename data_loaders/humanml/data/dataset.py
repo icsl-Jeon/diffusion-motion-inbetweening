@@ -16,6 +16,10 @@ from data_loaders.humanml.scripts.motion_process import recover_from_ric, extrac
 from data_loaders.humanml.utils.paramUtil import *
 from data_loaders.humanml.common.skeleton import Skeleton
 import pickle
+from transformers import AutoTokenizer
+
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 def collate_fn(batch):
     batch.sort(key=lambda x: x[3], reverse=True)
@@ -30,7 +34,6 @@ class Text2MotionDataset(data.Dataset):
         self.max_length = 20
         self.pointer = 0
         min_motion_len = 40 if self.opt.dataset_name == 't2m' else 24
-
         joints_num = opt.joints_num
 
         data_dict = {}
@@ -254,6 +257,7 @@ class Text2MotionDatasetV2(data.Dataset):
         self.pointer = 0
         self.max_motion_length = opt.max_motion_length
         min_motion_len = 40 if self.opt.dataset_name == 't2m' else 24
+        self.processor = AutoTokenizer.from_pretrained("openai/clip-vit-base-patch32", use_fast=True)
 
         self.use_rand_proj = use_rand_proj
         self.traject_only = traject_only
@@ -422,7 +426,7 @@ class Text2MotionDatasetV2(data.Dataset):
         text_data = random.choice(text_list)
         # text_data = text_list[0] # for rebuttal experiments
         caption, tokens = text_data['caption'], text_data['tokens']
-
+        tokenization_result = self.processor(caption, return_tensors="pt", padding='max_length', max_length=22, truncation=True)
         if len(tokens) < self.opt.max_text_len:
             # pad with "unk"
             tokens = ['sos/OTHER'] + tokens + ['eos/OTHER']
@@ -510,7 +514,7 @@ class Text2MotionDatasetV2(data.Dataset):
         # print(word_embeddings.shape, motion.shape)
         # print(tokens)
         return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(
-            tokens)
+            tokens), tokenization_result["input_ids"], tokenization_result["attention_mask"]
 
     def init_random_projection(self, save_at, scale: float):
         if os.path.isfile(os.path.join(save_at, "rand_proj.npy")):
@@ -1171,6 +1175,8 @@ class HumanML3D(data.Dataset):
                 bin_path = "/group-volume/outfill/bf.jeon/research/diffusion-motion-inbetweening/t2m_dataset_v2_data_train.bin"
             elif split == "test": 
                 bin_path = "/group-volume/outfill/bf.jeon/research/diffusion-motion-inbetweening/t2m_dataset_v2_data_test.bin"
+            elif split == "val":
+                bin_path = "/group-volume/outfill/bf.jeon/research/diffusion-motion-inbetweening/t2m_dataset_v2_data_val.bin"
             else:
                 bin_path = None
             self.t2m_dataset = Text2MotionDatasetV2(
