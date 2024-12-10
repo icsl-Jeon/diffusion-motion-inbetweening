@@ -114,7 +114,7 @@ class CompMDMGeneratedDatasetCondMDI(Dataset):
                 if args.guidance_param != 1:
                     # text classifier-free guidance
                     model_kwargs['y']['text_scale'] = torch.ones(motion.shape[0], device=dist_util.dev()) * text_scale
-                if args.keyframe_guidance_param != 1:
+                if keyframe_scale != 1.0:
                     # keyframe classifier-free guidance
                     model_kwargs['y']['keyframe_scale'] = torch.ones(motion.shape[0], device=dist_util.dev()) * keyframe_scale
 
