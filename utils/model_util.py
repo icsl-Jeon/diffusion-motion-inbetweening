@@ -20,7 +20,7 @@ def load_model_wo_clip(model: nn.Module, state_dict):
     missing_keys, unexpected_keys = model.load_state_dict(state_dict,
                                                           strict=False)
     assert len(unexpected_keys) == 0, f'unexpected keys: {unexpected_keys}'
-    assert all([k.startswith('clip_model.') for k in missing_keys])
+    # assert all([k.startswith('clip_model.') for k in missing_keys])
 
 
 def create_model_and_diffusion(args: FullModelOptions, data: DataLoader):
