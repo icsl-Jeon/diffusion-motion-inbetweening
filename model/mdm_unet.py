@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 from einops.layers.torch import Rearrange
 import einops
 import math
-
+from transformers import CLIPModel
 
 class Downsample1d(nn.Module):
     def __init__(self, dim):
@@ -702,6 +702,10 @@ class MDM_UNET(nn.Module):
                 print('EMBED ACTION')
 
         self.rot2xyz = Rotation2xyz(device='cpu', dataset=self.dataset)
+        self.clip_model_2 = CLIPModel.from_pretrained(
+            "openai/clip-vit-base-patch32",
+        )
+        self.clip_model_2.to("cuda")
 
     def parameters_wo_clip(self):
         return [
@@ -762,7 +766,7 @@ class MDM_UNET(nn.Module):
             texts = clip.tokenize(raw_text, truncate=True).to(
                 device
             )  # [bs, context_length] # if n_tokens > 77 -> will truncate
-        return self.clip_model.encode_text(texts).float()
+        return self.clip_model.encode_text(texts).float(), texts
 
     def forward(self, x, timesteps, y=None, obs_x0=None, obs_mask=None):
         """
@@ -793,16 +797,18 @@ class MDM_UNET(nn.Module):
         bs, njoints, nfeats, nframes = x.shape
         emb = self.embed_timestep(timesteps)  # [1, bs, d]
 
-        force_mask = y.get('uncond', False)
-        if 'text' in self.cond_mode:
-            enc_text = self.encode_text(y['text'])
-            emb += self.embed_text(
-                self.mask_cond(enc_text, force_mask=force_mask))
-        if 'action' in self.cond_mode:
-            action_emb = self.embed_action(y['action'])
-            emb += self.mask_cond(action_emb, force_mask=force_mask)
+        device = next(self.parameters()).device
+        if y.get('uncond', False):
+            emb_bf = self.embed_timestep(timesteps) + self.embed_text(torch.zeros_like(emb))
+        else:
+            inputs = {"input_ids": torch.stack(y["input_ids"]), "attention_mask": torch.stack(y["attn_masks"])}
+            inputs["attention_mask"] = inputs["attention_mask"].squeeze(1).to(device)
+            inputs["input_ids"] = inputs["input_ids"].squeeze(1).to(device)
 
-        emb = emb.squeeze(0)  # [bs, d]
+            with torch.no_grad():
+                outputs = self.clip_model_2.get_text_features(**inputs)
+            emb_bf = self.embed_timestep(timesteps) + self.embed_text(outputs)
+        emb = emb_bf.squeeze(0)
 
         # no need for positional embedding in the input becuase we use convolution.
         # [nframes, bs, d]
