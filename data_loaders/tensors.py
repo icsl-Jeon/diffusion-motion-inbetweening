@@ -39,6 +39,14 @@ def collate(batch):
         textbatch = [b['text'] for b in notnone_batches]
         cond['y'].update({'text': textbatch})
 
+    if 'attn_masks' in notnone_batches[0]:
+        textbatch = [b['attn_masks'] for b in notnone_batches]
+        cond['y'].update({'attn_masks': textbatch})
+
+    if 'input_ids' in notnone_batches[0]:
+        textbatch = [b['input_ids'] for b in notnone_batches]
+        cond['y'].update({'input_ids': textbatch})
+
     if 'tokens' in notnone_batches[0]:
         textbatch = [b['tokens'] for b in notnone_batches]
         cond['y'].update({'tokens': textbatch})
@@ -62,6 +70,8 @@ def t2m_collate(batch):
         'text': b[2], #b[0]['caption']
         'tokens': b[6],
         'lengths': b[5],
+        'attn_masks': b[-1],
+        'input_ids' : b[-2]
     } for b in batch]
     return collate(adapted_batch)
 
