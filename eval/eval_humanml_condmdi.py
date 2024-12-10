@@ -38,10 +38,10 @@ def evaluate_matching_score(eval_wrapper, motion_loaders, file):
         # print(motion_loader_name)
         with torch.no_grad():
             for idx, batch in enumerate(motion_loader):
-                if motion_loader_name == "vald":
+                if "vald" in motion_loader_name or motion_loader_name == "test":
                     word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _, dist_error, skate_ratio, keyframe_error, num_keyframes = batch
                 else:
-                    word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _ = batch
+                    word_embeddings, pos_one_hots, _, sent_lens, motions, m_lens, _, _, _ = batch
 
                 text_embeddings, motion_embeddings = eval_wrapper.get_co_embeddings(
                     word_embs=word_embeddings,
@@ -62,7 +62,7 @@ def evaluate_matching_score(eval_wrapper, motion_loaders, file):
 
                 all_motion_embeddings.append(motion_embeddings.cpu().numpy())
 
-                if motion_loader_name == "vald":
+                if "vald" in motion_loader_name:
                     # Compute dist error metrics
                     err_np = calculate_trajectory_error(dist_error, num_keyframes)
                     traj_err.append(err_np)
@@ -79,7 +79,7 @@ def evaluate_matching_score(eval_wrapper, motion_loaders, file):
             activation_dict[motion_loader_name] = all_motion_embeddings
 
 
-        if motion_loader_name == "vald":
+        if "vald" in motion_loader_name:
             ### For trajecotry evaluation ###
             traj_err = np.stack(traj_err).mean(0)
             trajectory_score_dict[motion_loader_name] = traj_err
@@ -124,7 +124,7 @@ def evaluate_fid(eval_wrapper, groundtruth_loader, activation_dict, file):
     print('========== Evaluating FID ==========')
     with torch.no_grad():
         for idx, batch in enumerate(groundtruth_loader):
-            _, _, _, sent_lens, motions, m_lens, _ = batch
+            _, _, _, sent_lens, motions, m_lens, _, _, _ = batch
             motion_embeddings = eval_wrapper.get_motion_embeddings(
                 motions=motions, m_lens=m_lens)
             gt_motion_embeddings.append(motion_embeddings.cpu().numpy())
@@ -442,7 +442,7 @@ def load_dataset(args, n_frames, split, hml_mode):
 
 if __name__ == '__main__':
     # speed up the eval
-    torch.set_num_threads(1)
+    # torch.set_num_threads(1)
 
     # assert flag.TRAIN_MAX_LEN == 196, "UNET length during evaluation works best with 196!"
 
@@ -452,7 +452,7 @@ if __name__ == '__main__':
     # NOTE: test use_ddim
     # args.use_ddim = True
 
-    args.batch_size = 32 # This must be 32! Don't change it! otherwise it will cause a bug in R precision calc!
+    args.batch_size = 256 # This must be 32! Don't change it! otherwise it will cause a bug in R precision calc!
     args.num_frames = 196 # This must be 196!
     args.gen_two_stages = False
     skip_first_stage = True
@@ -480,6 +480,7 @@ if __name__ == '__main__':
     if args.guidance_param != 1.:
         log_file += f'_gscale{args.guidance_param}'
     log_file += f'_{args.eval_mode}'
+    log_file += f'_{args.edit_mode}'
     log_file += '.log'
     print(f'Will save to log file [{log_file}]')
 
@@ -489,7 +490,7 @@ if __name__ == '__main__':
         mm_num_samples = 0
         mm_num_repeats = 0
         mm_num_times = 0
-        diversity_times = 300
+        diversity_times = 20
         replication_times = 1  # about 3 Hrs
     elif args.eval_mode == 'wo_mm':
         num_samples_limit = 1000
