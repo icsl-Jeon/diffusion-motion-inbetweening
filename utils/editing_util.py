@@ -71,7 +71,7 @@ def get_keyframes_mask(data, lengths, edit_mode='benchmark_sparse', trans_length
 
     batch_size, n_joints, n_features, n_frames = data.shape
 
-    if n_joints == 263:
+    if n_joints == 263 or n_joints == 67:
         # HumanML dataset
         joints_dim = 22
     elif n_joints == 764:
