@@ -635,7 +635,7 @@ class MDM_UNET(nn.Module):
 
         if self.keyframe_conditioned:
             if self.dataset == 'humanml' and not self.xz_only:
-                added_channels = 263
+                added_channels = self.njoints
             elif self.dataset == 'amass':
                 added_channels = 764
         else:
@@ -782,6 +782,8 @@ class MDM_UNET(nn.Module):
         assert (obs_x0 is None) == (obs_mask is None), 'with spatial-conditioning, both obs_x0 and obs_mask must be provided'
         if self.keyframe_conditioned:
             assert self.dataset in ['humanml', 'amass']
+            obs_mask = obs_mask[:, :self.njoints, ...]
+            obs_x0 = obs_x0[:, :self.njoints, ...]
             x = obs_x0 * obs_mask + x * (~obs_mask)
             x = torch.cat([x, obs_mask], dim=1)
         return self.forward_core(x, timesteps, y)
@@ -838,7 +840,7 @@ class MDM_UNET(nn.Module):
                 x = tmp
         # just reshape the output nothing else
         if self.keyframe_conditioned:
-            njoints = 263 if self.dataset == 'humanml' else 764
+            njoints = self.njoints if self.dataset == 'humanml' else 764
         x = x.reshape(nframes, bs, njoints, nfeats)
 
         # NOTE: TODO: move the following to gaussian_diffusion.py

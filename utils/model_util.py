@@ -62,7 +62,7 @@ def get_model_args(args: FullModelOptions, data: DataLoader):
     if args.dataset == 'humanml':
         data_rep = 'hml_vec'
         nfeats = 1
-        if args.drop_redundant:
+        if args.drop_redundant or args.position_only_model:
             njoints = 67 # 4 + 21 * 3
         else:
             njoints = 263

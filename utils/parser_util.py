@@ -97,7 +97,10 @@ class ModelOptions:
     zero_keyframe_loss: bool = field(
         default=False,
         metadata={"help": "If True, will zero the loss over observed keyframe loss. Set this to False by default so that model has its own predictions over the observed keyframes."})
-
+    
+    position_only_model: bool = field(
+        default=False,
+        metadata={"help": "If True, will zero the loss over observed keyframe loss. Set this to False by default so that model has its own predictions over the observed keyframes."})
 
 
 @dataclass

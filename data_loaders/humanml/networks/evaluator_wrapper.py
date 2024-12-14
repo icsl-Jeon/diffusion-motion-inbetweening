@@ -153,6 +153,10 @@ class EvaluatorMDMWrapper(object):
     # Please note that the results does not following the order of inputs
     def get_co_embeddings(self, word_embs, pos_ohot, cap_lens, motions, m_lens):
         with torch.no_grad():
+            if motions.shape[-1] < 263:
+                motions_ = torch.zeros((motions.shape[0], motions.shape[1], 263))
+                motions_[..., :motions.shape[-1]] = motions
+                motions = motions_
             word_embs = word_embs.detach().to(self.device).float()
             pos_ohot = pos_ohot.detach().to(self.device).float()
             motions = motions.detach().to(self.device).float()
@@ -175,7 +179,10 @@ class EvaluatorMDMWrapper(object):
     def get_motion_embeddings(self, motions, m_lens):
         with torch.no_grad():
             motions = motions.detach().to(self.device).float()
-
+            if motions.shape[-1] < 263:
+                motions_ = torch.zeros((motions.shape[0], motions.shape[1], 263), device=self.device)
+                motions_[..., :motions.shape[-1]] = motions
+                motions = motions_
             align_idx = np.argsort(m_lens.data.tolist())[::-1].copy()
             motions = motions[align_idx]
             m_lens = m_lens[align_idx]

@@ -66,6 +66,9 @@ class traj_mdm(_traj):
 class motion_unet_adagn_xl(_motion_unet):
     dim_mults: Tuple[float] = (2, 2, 2, 2)
 
+@dataclass
+class motion_unet_adagn_m(_motion_unet):
+    dim_mults: Tuple[float] = (1, 1, 1, 1)
 
 @dataclass
 class motion_unet_adagn_xl_loss2(_motion_unet):
