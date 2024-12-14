@@ -112,6 +112,8 @@ class TrainLoop:
             mm_num_samples = 0  # mm is super slow hence we won't run it during training
             mm_num_repeats = 0  # mm is super slow hence we won't run it during training
             split = "val"
+            if self.args.position_only_model:
+                args.drop_redundant = True
             gen_loader = load_dataset(args, args.num_frames, split, hml_mode='eval')
             self.eval_gt_data = load_dataset(args, args.num_frames, split, hml_mode='gt')
             self.eval_wrapper = EvaluatorMDMWrapper(args.dataset,
@@ -215,6 +217,8 @@ class TrainLoop:
                 if self.args.keyframe_conditioned:
                     cond['obs_x0'] = motion # [bs, n_joints=263, n_feats=1, n_frames=224]
                     cond['obs_mask'] = get_keyframes_mask(data=motion, lengths=cond['y']['lengths'], edit_mode=self.args.keyframe_selection_scheme) # [bs, n_joints=263, nfeats=1, n_frames=224]
+                    if self.args.position_only_model:
+                        cond['obs_mask'] = cond['obs_mask'][:, :67, ...]
                     if self.args.keyframe_mask_prob > 0.:
                         mask = torch.bernoulli(torch.ones(cond['obs_mask'].shape[0],
                                                device=cond['obs_mask'].device) * self.args.keyframe_mask_prob).view(cond['obs_mask'].shape[0], 1, 1, 1)
