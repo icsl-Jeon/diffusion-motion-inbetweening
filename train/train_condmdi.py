@@ -16,6 +16,8 @@ import datetime
 
 def main():
     args = train_args(base_cls=card.motion_abs_unet_adagn_xl) # Choose the default full motion model from GMD
+    if args.position_only_model:
+        args = train_args(base_cls=card.motion_abs_unet_adagn_m)
     args.save_dir = os.path.join("save", datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     pprint(args.__dict__)
@@ -42,7 +44,7 @@ def main():
         random_projection_scale=args.random_proj_scale,
         augment_type=args.augment_type,
         std_scale_shift=args.std_scale_shift,
-        drop_redundant=args.drop_redundant,
+        drop_redundant=args.position_only_model,
     )
 
     data = get_dataset_loader(data_conf)
