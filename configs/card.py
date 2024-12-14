@@ -75,6 +75,13 @@ class motion_abs_unet_adagn_xl(
 ):
     save_dir: str = 'save/unet_adazero_xl_x0_abs_loss1_fp16_clipwd_224'
 
+@dataclass
+class motion_abs_unet_adagn_m(
+        data.humanml_motion_abs,
+        model.motion_unet_adagn_m,
+):
+    save_dir: str = 'save/unet_adazero_xl_x0_abs_loss1_fp16_clipwd_224'
+
 
 @dataclass
 class motion_abs_unet_adagn_xl_loss2(
