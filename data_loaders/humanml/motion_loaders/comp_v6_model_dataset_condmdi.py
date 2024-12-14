@@ -127,7 +127,8 @@ class CompMDMGeneratedDatasetCondMDI(Dataset):
                 # NOTE: the 'motion' will have relative representation if dataset mode is 'eval' or 'gt',
                 # even if the 'self.dataset.t2m_dataset.use_abs3d' is True
                 gt_poses = motion.permute(0, 2, 3, 1)
-                gt_poses = gt_poses * self.dataset.std + self.dataset.mean  # [bs, 1, 196, 263] # TODO: mean and std are absolute mean and std and this is done on purpose! Why?  dataset: The 'eval' is here because we want inv_transform to work the same way at inference for model with abs3d,regradless of which dataset is loaded.
+                if args.position_only_model:
+                    gt_poses = gt_poses * self.dataset.std[:67] + self.dataset.mean[:67]  # [bs, 1, 196, 263] # TODO: mean and std are absolute mean and std and this is done on purpose! Why?  dataset: The 'eval' is here because we want inv_transform to work the same way at inference for model with abs3d,regradless of which dataset is loaded.
                 # TODO: gt_poses = gt_poses * self.dataset.std_rel + self.dataset.mean_rel
                 # (x,y,z) [bs, 1, 120, njoints=22, nfeat=3]
                 gt_skel_motions = recover_from_ric(gt_poses.float(), 22, abs_3d=False)
