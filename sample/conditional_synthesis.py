@@ -228,7 +228,7 @@ def main():
 
         # Unnormalize samples and recover XYZ *positions*
         if model.data_rep == 'hml_vec':
-            n_joints = 22 if (sample.shape[1] in [263, 264]) else 21
+            n_joints = 22 if (sample.shape[1] in [263, 264, 67]) else 21
             sample = sample.cpu().permute(0, 2, 3, 1)
             sample = data.dataset.t2m_dataset.inv_transform(sample).float()
             sample = recover_from_ric(sample, n_joints, abs_3d=args.abs_3d)
